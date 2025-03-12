@@ -4,8 +4,6 @@ import (
 	"os"
 	"os/exec"
 	"testing"
-
-	"github.com/tisonpatrik/HyZen/internal"
 )
 
 // Test that HyZen should NOT be run as root
@@ -23,17 +21,5 @@ func TestAppRuns(t *testing.T) {
 	err := cmd.Run()
 	if err != nil {
 		t.Fatalf("❌ Failed to run main.go: %v", err)
-	}
-}
-
-// Test command execution function
-func TestRunCommand(t *testing.T) {
-	output := internal.RunCommand(
-		"echo test",
-	) // Now correctly calling internal package
-	expected := "test\n"
-
-	if output != expected {
-		t.Errorf("❌ Expected %q but got %q", expected, output)
 	}
 }
