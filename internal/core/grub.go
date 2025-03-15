@@ -8,28 +8,19 @@ import (
 	"hyprzen/internal/utils"
 )
 
-func ConfigureGrub() {
+func ConfigureGrub(nvidiaIsDetected bool) {
 	if !utils.IsGrubDetected() {
-		fmt.Println("[INFO] GRUB není detekován, přeskočeno...")
 		return
 	}
-
-	fmt.Println("[INFO] GRUB detekován, začíná konfigurace...")
-
-	if _, err := utils.RunCommand("sudo", "cp", "/etc/default/grub", "/etc/default/grub.hyprzen.bkp"); err != nil {
-		fmt.Println("[ERROR] Nelze zálohovat /etc/default/grub:", err)
-		return
-	}
-	if _, err := utils.RunCommand("sudo", "cp", "/boot/grub/grub.cfg", "/boot/grub/grub.hyprzen.bkp"); err != nil {
-		fmt.Println("[ERROR] Nelze zálohovat /boot/grub/grub.cfg:", err)
-		return
-	}
-
-	if utils.IsNvidiaDetected() {
+	makeGrubBackup()
+	if nvidiaIsDetected {
 		setupNVIDIA()
 	}
+	setupTheme()
+	cleanup()
+}
 
-	fmt.Println("[INFO] Stahuji a instaluji Catppuccin GRUB téma...")
+func setupTheme() {
 	_, _ = utils.RunCommand(
 		"git", "clone", "https://github.com/catppuccin/grub.git",
 	)
@@ -50,23 +41,25 @@ func ConfigureGrub() {
 		fmt.Println("[ERROR] Nelze vygenerovat nový GRUB config:", err)
 		return
 	}
-	if _, err := utils.RunCommand("rm", "-rf", "grub"); err != nil {
-		fmt.Println("[ERROR] Nelze odstranit adresar grub", err)
-	}
+}
 
-	fmt.Println("[INFO] GRUB konfigurace dokončena.")
+func makeGrubBackup() {
+	if _, err := utils.RunCommand("sudo", "cp", "/etc/default/grub", "/etc/default/grub.hyprzen.bkp"); err != nil {
+		fmt.Println("[ERROR] Nelze zálohovat /etc/default/grub:", err)
+		return
+	}
+	if _, err := utils.RunCommand("sudo", "cp", "/boot/grub/grub.cfg", "/boot/grub/grub.hyprzen.bkp"); err != nil {
+		fmt.Println("[ERROR] Nelze zálohovat /boot/grub/grub.cfg:", err)
+		return
+	}
 }
 
 func setupNVIDIA() {
-	fmt.Println(
-		"[INFO] Nvidia GPU detekována, přidávám `nvidia_drm.modeset=1`...",
-	)
 	grubConfig, _ := utils.RunCommand(
 		"grep",
 		"^GRUB_CMDLINE_LINUX_DEFAULT=",
 		"/etc/default/grub",
 	)
-
 	if grubConfig == "" {
 		fmt.Println(
 			"[INFO] GRUB_CMDLINE_LINUX_DEFAULT nenalezen, vytvářím nový...",
@@ -94,5 +87,11 @@ func setupNVIDIA() {
 	if _, err := utils.RunCommand("sudo", "sed", "-i", sedCmd, "/etc/default/grub"); err != nil {
 		fmt.Println("[ERROR] Nelze upravit /etc/default/grub:", err)
 		return
+	}
+}
+
+func cleanup() {
+	if _, err := utils.RunCommand("rm", "-rf", "grub"); err != nil {
+		fmt.Println("[ERROR] Nelze odstranit adresar grub", err)
 	}
 }

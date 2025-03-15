@@ -1,7 +1,17 @@
-# 📌 HyZen – A Zen-like Installer & Configurator for Hyprland on Arch Linux
+# 📌 HyprZen – A Zen-like Installer & Configurator for Hyprland on Arch Linux
 
-🚧 **HyZen is in active development!** 🚧  
+🚧 **HyprZen is in active development!** 🚧  
 The goal is to create a **minimalist, Go-powered installer** for **Hyprland on Arch Linux**, fully replacing complex shell scripts with a **clean, interactive TUI**.
+
+
+---
+
+## 🔧 System Requirements
+
+- Must be running **Arch Linux** (a minimal installation, not the archinstall variant)  
+- **GRUB** bootloader is required  
+- **git**
+- **go**
 
 ---
 
@@ -18,11 +28,11 @@ The goal is to create a **minimalist, Go-powered installer** for **Hyprland on A
 
 ## 🔧 Project Status
 
-HyZen is currently a **work in progress**. Contributions, feedback, and ideas are welcome! 🚀
+HyprZen is currently a **work in progress**. Contributions, feedback, and ideas are welcome! 🚀
 
 ---
 
-## 💡 Why HyZen?
+## 💡 Why HyprZen?
 
 ❌ **No shell scripts** – only Go  
 ❌ **No unnecessary features** – just what’s needed  
@@ -43,8 +53,8 @@ Stay tuned!
 ## 🛠 How to Run (Development Mode)
 
 ```sh
-git clone https://github.com/tisonpatrik/HyZen.git
-cd HyZen
+git clone https://github.com/tisonpatrik/HyprZen.git
+cd HyprZen
 make build
 ./build/main
 

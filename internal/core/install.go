@@ -1,7 +1,9 @@
 package core
 
+import "hyprzen/internal/utils"
+
 func PreInstall() {
-	ConfigureGrub()
-	ConfigureSystemdBoot()
+	nvidiaDetected := utils.IsNvidiaDetected()
+	ConfigureGrub(nvidiaDetected)
 	ConfigurePacman()
 }
