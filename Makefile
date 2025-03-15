@@ -50,12 +50,10 @@ all: build audit
 
 # Build the application
 build:
-	@echo "Building..."
 	@go build -o build/main ./cmd
 
 # Build and run the application
 run: build
-	@echo "Running..."
 	@./build/main
 
 # Clean the binary

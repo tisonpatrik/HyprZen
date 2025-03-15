@@ -1,4 +1,4 @@
-package tui
+package models
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
@@ -11,7 +11,7 @@ type MainModel struct {
 	Quitting bool
 }
 
-func NewMainModel() MainModel {
+func NewMainMenu() MainModel {
 	return MainModel{}
 }
 
@@ -30,11 +30,11 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			switch m.Choice {
 			case 0:
-				return views.NewInstallView(), nil
+				return NewInstallModel(), nil
 			case 1:
-				return views.NewRestoreView(), nil
+				return NewRestoreModel(), nil
 			case 2:
-				return views.NewUninstallView(), nil
+				return NewUninstallModel(), nil
 			case 3:
 				m.Quitting = true
 				return m, tea.Quit
