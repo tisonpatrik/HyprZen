@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/fogleman/ease"
 )
@@ -18,6 +20,12 @@ type (
 	TickMsg  struct{}
 	FrameMsg struct{}
 )
+
+func frame() tea.Cmd {
+	return tea.Tick(time.Second/60, func(time.Time) tea.Msg {
+		return FrameMsg{}
+	})
+}
 
 func NewModel() Model {
 	return Model{
@@ -77,7 +85,7 @@ func updateChoices(msg tea.Msg, m Model) (tea.Model, tea.Cmd) {
 
 func updateChosen(msg tea.Msg, m Model) (tea.Model, tea.Cmd) {
 	switch msg.(type) {
-	case frameMsg:
+	case FrameMsg:
 		if !m.Loaded {
 			m.Frames++
 			m.Progress = ease.OutBounce(float64(m.Frames) / float64(100))
