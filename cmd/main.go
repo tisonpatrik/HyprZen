@@ -9,8 +9,7 @@ import (
 )
 
 func main() {
-	initialModel := tui.NewModel()
-	p := tea.NewProgram(initialModel)
+	p := tea.NewProgram(tui.NewMainModel())
 	if _, err := p.Run(); err != nil {
 		fmt.Println("could not start program:", err)
 	}

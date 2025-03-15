@@ -1,101 +1,53 @@
 package tui
 
 import (
-	"time"
-
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/fogleman/ease"
+
+	"hyprzen/internal/tui/views"
 )
 
-type Model struct {
+type MainModel struct {
 	Choice   int
-	Chosen   bool
-	Frames   int
-	Progress float64
-	Loaded   bool
 	Quitting bool
 }
 
-type (
-	TickMsg  struct{}
-	FrameMsg struct{}
-)
-
-func frame() tea.Cmd {
-	return tea.Tick(time.Second/60, func(time.Time) tea.Msg {
-		return FrameMsg{}
-	})
+func NewMainModel() MainModel {
+	return MainModel{}
 }
 
-func NewModel() Model {
-	return Model{
-		Choice:   0,
-		Chosen:   false,
-		Frames:   0,
-		Progress: 0.0,
-		Loaded:   false,
-		Quitting: false,
-	}
-}
-
-func (m Model) Init() tea.Cmd {
+func (m MainModel) Init() tea.Cmd {
 	return nil
 }
 
-// Main update function.
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Make sure these keys always quit
-	if msg, ok := msg.(tea.KeyMsg); ok {
-		k := msg.String()
-		if k == "q" || k == "esc" || k == "ctrl+c" {
-			m.Quitting = true
-			return m, tea.Quit
-		}
-	}
-
-	// Hand off the message and model to the appropriate update function for the
-	// appropriate view based on the current state.
-	if !m.Chosen {
-		return updateChoices(msg, m)
-	}
-	return updateChosen(msg, m)
-}
-
-func updateChoices(msg tea.Msg, m Model) (tea.Model, tea.Cmd) {
+func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "j", "down":
-			m.Choice++
-			if m.Choice > 3 {
-				m.Choice = 3
-			}
+			m.Choice = (m.Choice + 1) % 4
 		case "k", "up":
-			m.Choice--
-			if m.Choice < 0 {
-				m.Choice = 0
-			}
+			m.Choice = (m.Choice - 1 + 4) % 4
 		case "enter":
-			m.Chosen = true
-			return m, frame()
+			switch m.Choice {
+			case 0:
+				return views.NewInstallView(), nil
+			case 1:
+				return views.NewRestoreView(), nil
+			case 2:
+				return views.NewUninstallView(), nil
+			case 3:
+				m.Quitting = true
+				return m, tea.Quit
+			}
 		}
 	}
+
 	return m, nil
 }
 
-func updateChosen(msg tea.Msg, m Model) (tea.Model, tea.Cmd) {
-	switch msg.(type) {
-	case FrameMsg:
-		if !m.Loaded {
-			m.Frames++
-			m.Progress = ease.OutBounce(float64(m.Frames) / float64(100))
-			if m.Progress >= 1 {
-				m.Progress = 1
-				m.Loaded = true
-			}
-			return m, frame()
-		}
+func (m MainModel) View() string {
+	if m.Quitting {
+		return "\n  See you later!\n\n"
 	}
-
-	return m, nil
+	return views.MainView(m.Choice)
 }
