@@ -21,12 +21,11 @@ func (m InstallModel) Init() tea.Cmd {
 	return services.InstallCmd()
 }
 
-// Update zpracovává zprávy (dokončení instalace, ukončení aplikace)
 func (m InstallModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case services.InstallDoneMsg:
 		m.Done = true
-		return m, tea.Quit // Automaticky ukončí aplikaci po instalaci
+		return m, tea.Quit
 
 	case tea.KeyMsg:
 		switch msg.String() {

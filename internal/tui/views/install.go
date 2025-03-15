@@ -1,16 +1,15 @@
 package views
 
 import (
-	"fmt"
-
 	"hyprzen/internal/tui/styles"
 )
 
 func InstallView(done bool) string {
-	label := "Installing HyprZen...\n\nPlease wait..."
-	return fmt.Sprintf(
-		"%s\n\n%s",
-		styles.KeywordStyle.Render(label),
-		styles.KeywordStyle.Render("System setup in progress..."),
-	)
+	if done {
+		return styles.KeywordStyle.Render(
+			"Installation complete!\n\nPress 'q' to exit.",
+		)
+	}
+
+	return styles.KeywordStyle.Render("Installing HyprZen...\n\nPlease wait...")
 }

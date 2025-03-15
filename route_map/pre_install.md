@@ -1,149 +1,120 @@
 BEGIN
-    // Vytisknutí ASCII banneru
-    VYPIŠ "banner s logem a nápisem"
+    // Získání adresáře, kde se skript nachází
+    SET scrDir = adresář, kde se nachází tento skript
 
-    // -----------------------------
-    // Načtení globálních funkcí a proměnných
-    // -----------------------------
-    SET scrDir = adresář, kde se nachází aktuální skript
+    // Načtení globálních funkcí a proměnných z global_fn.sh
     SOURCE (scrDir + "/global_fn.sh")
-      // global_fn.sh obsahuje pomocné funkce (např. print_log, prompt_timer, nvidia_detect, atd.)
+      // global_fn.sh poskytuje funkce jako print_log, prompt_timer, nvidia_detect, atd.
 
-    // -----------------------------
-    // Vyhodnocení předaných parametrů (přepínačů)
-    // -----------------------------
-    INICIALIZUJ příznaky:
-      flg_Install, flg_Restore, flg_Service, flg_DryRun, flg_Shell, flg_Nvidia, flg_ThemeInstall
-    PROČTI příkazové řádky (getopts)
-      // Přiřaď hodnoty příslušným příznakům (např. -i pro instalaci, -r pro obnovení konfigurace, apod.)
-    KONEC cyklu
+    // Načtení režimu suchého běhu (dry run), pokud není nastavena, nastav na 0
+    SET flg_DryRun = (hodnota z prostředí, nebo výchozí 0)
 
-    // Nastavení proměnných pro export a kontrola výchozích voleb
-    EXPORT proměnné (např. HYDE_LOG, flg_DryRun, atd.)
-    IF žádný argument nebyl předán THEN
-         Nastav výchozí: flg_Install, flg_Restore, flg_Service = 1
+    // -----------------------------------------------------------
+    // Konfigurace GRUB bootloaderu
+    // -----------------------------------------------------------
+    IF (balíček "grub" je nainstalován AND soubor /boot/grub/grub.cfg existuje) THEN
+        LOG "GRUB bootloader detekován"
+
+        // Kontrola, zda již nebyly vytvořeny zálohy konfigurací GRUB
+        IF (záloha /etc/default/grub.hyde.bkp a /boot/grub/grub.hyde.bkp neexistují) THEN
+            LOG "Zálohování a konfigurace GRUB"
+            // Vytvoření záloh konfiguračních souborů
+            COPY /etc/default/grub -> /etc/default/grub.hyde.bkp
+            COPY /boot/grub/grub.cfg -> /boot/grub/grub.hyde.bkp
+
+            // Pokud je detekována Nvidia GPU, přidat volbu nvidia_drm.modeset=1
+            IF (nvidia_detect vrací true) THEN
+                LOG "Nvidia detekována: přidání nvidia_drm.modeset=1"
+                // Získat aktuální GRUB_CMDLINE_LINUX_DEFAULT a odstranit případné duplicitní volby
+                UPDATE hodnotu GRUB_CMDLINE_LINUX_DEFAULT v /etc/default/grub, přidat 'nvidia_drm.modeset=1'
+            END IF
+
+            // Výzva uživateli k výběru GRUB tématu
+            LOG "Výběr tématu GRUB"
+            DISPLAY možnosti: [1] Retroboot (tmavé), [2] Pochita (světlé), nebo vynechat výběr
+            READ uživatelský vstup (grubopt)
+            SWITCH grubopt:
+                CASE 1: SET grubtheme = "Retroboot"
+                CASE 2: SET grubtheme = "Pochita"
+                DEFAULT: SET grubtheme = "None"
+            END SWITCH
+
+            // Nastavení tématu nebo jeho přeskočení
+            IF (grubtheme == "None") THEN
+                LOG "Téma GRUB se přeskočí"
+                MODIFIKUJ /etc/default/grub tak, aby bylo vypnuto nastavení tématu
+            ELSE
+                LOG "Nastavení tématu GRUB: " + grubtheme
+                // Rozbalit tar.gz archiv tématu do adresáře GRUB témat
+                EXTRACT (cloneDir + "/Source/arcs/Grub_" + grubtheme + ".tar.gz") -> /usr/share/grub/themes/
+                // Aktualizovat /etc/default/grub s novými nastaveními (GRUB_DEFAULT, GRUB_GFXMODE, GRUB_THEME atd.)
+                UPDATE /etc/default/grub s odpovídajícími řádky
+            END IF
+
+            // Vygenerovat nový konfigurační soubor GRUB
+            RUN sudo grub-mkconfig -o /boot/grub/grub.cfg
+        ELSE
+            LOG "GRUB již byl nakonfigurován, přeskočeno..."
+        END IF
     END IF
 
-    // -----------------------------
-    // PŘEDINSTALAČNÍ KROK
-    // -----------------------------
-    IF (flg_Install == 1 AND flg_Restore == 1) THEN
-         VYPIŠ "pre-install banner"
-         SPUSŤ (scrDir + "/install_pre.sh")
-           // install_pre.sh obsahuje předinstalační rutiny (např. příprava systému)
+    // -----------------------------------------------------------
+    // Konfigurace systemd-boot
+    // -----------------------------------------------------------
+    IF (balíček "systemd" je nainstalován AND nvidia_detect je true AND bootctl status indikuje systemd-boot) THEN
+        LOG "systemd-boot detekován"
+
+        // Kontrola záloh konfigurací systemd-boot
+        IF (počet záloh (*.conf.hyde.bkp) není stejný jako počet *.conf souborů) THEN
+            LOG "Konfigurace systemd-boot s přidáním nvidia_drm.modeset=1"
+            FOR EACH konfigurační soubor (*.conf) v /boot/loader/entries/ DO
+                BACKUP soubor -> soubor.hyde.bkp
+                // Odstranit nepotřebné volby a přidat volbu nvidia_drm.modeset=1 spolu s 'quiet splash'
+                UPDATE řádek začínající "options" v souboru
+            END FOR
+        ELSE
+            LOG "systemd-boot již byl nakonfigurován, přeskočeno..."
+        END IF
     END IF
 
-    // -----------------------------
-    // INSTALACE BALÍČKŮ A KONFIGURACE
-    // -----------------------------
-    IF (flg_Install == 1) THEN
-         VYPIŠ "instalační banner"
-
-         // Příprava seznamu balíčků
-         COPY (scrDir + "/pkg_core.lst") -> (scrDir + "/install_pkg.lst")
-         SET trap pro uložení seznamu do logu při ukončení
-         IF byl předán vlastní seznam balíčků THEN
-              APPEND obsah vlastního seznamu do install_pkg.lst
-         END IF
-         APPEND oddělovač "#user packages" do install_pkg.lst
-
-         // Detekce Nvidia a přidání ovladačů, pokud jsou povoleny
-         IF (nvidia_detect zjistí Nvidia GPU) THEN
-              IF (flg_Nvidia == 1) THEN
-                   PROČTI soubory s názvy balíčků z /usr/lib/modules/*/pkgbase
-                   APPEND každý (kernel-headers) do install_pkg.lst
-                   APPEND výsledky (nvidia_detect --drivers) do install_pkg.lst
-              ELSE
-                   VYPIŠ, že Nvidia akce jsou přeskočeny
-              END IF
-         END IF
-         VOLAT nvidia_detect --verbose
-
-         // Získání uživatelských preferencí (AUR helper, shell)
-         IF (AUR helper není nastaven) THEN
-              VYPIŠ seznam dostupných AUR helperů
-              VYZVÁNÍ k volbě s timeoutem
-              NAZEV vybraného AUR helperu se exportuje do proměnné (např. "yay-bin")
-         END IF
-
-         IF (shell preference není nastavena) THEN
-              VYPIŠ seznam podporovaných shellů (např. zsh, fish)
-              VYZVÁNÍ k volbě s timeoutem
-              EXPORT vybraného shellu do proměnné a APPEND do install_pkg.lst
-         END IF
-
-         // Kontrola, že install_pkg.lst obsahuje "#user packages"
-         IF (install_pkg.lst neobsahuje "#user packages") THEN
-              VYPIŠ chybu a ukonči skript
-         END IF
-
-         // Spuštění instalace balíčků, pokud nejde o testovací režim
-         IF (flg_DryRun != 1) THEN
-              SPUSŤ (scrDir + "/install_pkg.sh") s install_pkg.lst
-                // install_pkg.sh nainstaluje balíčky uvedené v seznamu
-         END IF
+    // -----------------------------------------------------------
+    // Úprava konfigurace pacman
+    // -----------------------------------------------------------
+    IF (/etc/pacman.conf existuje AND záloha /etc/pacman.conf.hyde.bkp neexistuje) THEN
+        LOG "Úprava konfigurace pacman"
+        IF (flg_DryRun není aktivní) THEN
+            // Vytvoření zálohy pacman.conf
+            COPY /etc/pacman.conf -> /etc/pacman.conf.hyde.bkp
+            // Přidání voleb: Color, ILoveCandy, VerbosePkgLists, ParallelDownloads a odkomentování multilib
+            MODIFIKUJ /etc/pacman.conf podle požadavků
+            // Aktualizace systému
+            RUN sudo pacman -Syyu
+            RUN sudo pacman -Fy
+        END IF
+    ELSE
+        LOG "Pacman již byl nakonfigurován, přeskočeno..."
     END IF
 
-    // -----------------------------
-    // OBNOVENÍ KONFIGURAČNÍCH SOUBORŮ
-    // -----------------------------
-    IF (flg_Restore == 1) THEN
-         VYPIŠ "restore banner"
-         IF (není dry run a HYPRLAND_INSTANCE_SIGNATURE je nastaveno) THEN
-              VYPOŘÍDAJ se s automatickým reloadem (hyprctl keyword misc:disable_autoreload)
-         END IF
-
-         // Spuštění obnovovacích skriptů:
-         SPUSŤ (scrDir + "/restore_fnt.sh")
-         SPUSŤ (scrDir + "/restore_cfg.sh")
-         SPUSŤ (scrDir + "/restore_thm.sh")
-         VYPIŠ, že se generují cache pro tapety
-         IF (není dry run) THEN
-              SPUSŤ "$HOME/.local/lib/hyde/swwwallcache.sh" -t ""
-              SPUSŤ "$HOME/.local/lib/hyde/themeswitch.sh" -q  // Ignoruj chyby
-              VYPIŠ informaci o reloadu Hyprland
-         END IF
-    END IF
-
-    // -----------------------------
-    // POST-INSTALAČNÍ KROK
-    // -----------------------------
-    IF (flg_Install == 1 AND flg_Restore == 1) THEN
-         VYPIŠ "post-install banner"
-         SPUSŤ (scrDir + "/install_pst.sh")
-           // install_pst.sh provádí post-instalaci (např. čištění, další konfiguraci)
-    END IF
-
-    // -----------------------------
-    // SPRÁVA SYSTEMD SLUŽEB
-    // -----------------------------
-    IF (flg_Service == 1) THEN
-         VYPIŠ "service banner"
-         Otevři soubor (scrDir + "/system_ctl.lst") a pro každý řádek (název služby):
-              CHECK jestli služba již běží přes systemctl
-              IF služba již existuje THEN
-                   VYPIŠ, že služba je aktivní (skip)
-              ELSE
-                   VYPIŠ, že služba bude spuštěna
-                   IF (není dry run) THEN
-                        ENABLE a START službu přes systemctl
-                   END IF
-              END IF
-         KONEC smyčky
-    END IF
-
-    // -----------------------------
-    // Závěrečné hlášení a případný reboot
-    // -----------------------------
-    IF (flg_Install OR flg_Restore OR flg_Service jsou aktivní) THEN
-         VYPIŠ dokončení instalace a umístění logů
-         POŽÁDÁNÍ o reboot: "Je doporučeno restartovat systém. Chcete rebootovat? (y/N)"
-         ČTENÍ vstupu
-         IF (uživatel potvrdí reboot) THEN
-              REBOOT systému pomocí systemctl
-         ELSE
-              VYPIŠ, že systém nebude restartován
-         END IF
+    // -----------------------------------------------------------
+    // Přidání Chaotic AUR repozitáře
+    // -----------------------------------------------------------
+    IF (soubor /etc/pacman.conf obsahuje "[chaotic-aur]") THEN
+        LOG "Chaotic AUR již existuje, přeskočeno..."
+    ELSE
+        // Výzva k instalaci Chaotic AUR s timeoutem
+        PROMPT "Chcete nainstalovat Chaotic AUR? [y/n] | q k ukončení" s timeoutem 120 sekund
+        READ uživatelský vstup (PROMPT_INPUT)
+        SWITCH PROMPT_INPUT:
+            CASE 'y' or 'Y': SET is_chaotic_aur = true
+            CASE 'n' or 'N': SET is_chaotic_aur = false
+            CASE 'q' or 'Q': LOG "Ukončuji" a EXIT
+            DEFAULT: SET is_chaotic_aur = true
+        END SWITCH
+        IF (is_chaotic_aur == true) THEN
+            // Inicializace pacman klíče a spuštění skriptu pro Chaotic AUR
+            RUN sudo pacman-key --init
+            RUN (scrDir + "/chaotic_aur.sh") s parametrem --install
+        END IF
     END IF
 
 END
