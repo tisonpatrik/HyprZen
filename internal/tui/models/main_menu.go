@@ -3,6 +3,7 @@ package models
 import (
 	tea "github.com/charmbracelet/bubbletea"
 
+	"hyprzen/internal/services"
 	"hyprzen/internal/tui/views"
 )
 
@@ -30,7 +31,7 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			switch m.Choice {
 			case 0:
-				return NewInstallModel(), nil
+				return NewInstallModel(), services.InstallCmd()
 			case 1:
 				return NewRestoreModel(), nil
 			case 2:

@@ -1,4 +1,4 @@
-package utils
+package styles
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"github.com/lucasb-eyer/go-colorful"
 )
 
-func MakeRampStyles(colorA, colorB string, steps float64) (s []lipgloss.Style) {
+func makeRampStyles(colorA, colorB string, steps float64) (s []lipgloss.Style) {
 	cA, _ := colorful.Hex(colorA)
 	cB, _ := colorful.Hex(colorB)
 
@@ -16,13 +16,13 @@ func MakeRampStyles(colorA, colorB string, steps float64) (s []lipgloss.Style) {
 		c := cA.BlendLuv(cB, i/steps)
 		s = append(
 			s,
-			lipgloss.NewStyle().Foreground(lipgloss.Color(ColorToHex(c))),
+			lipgloss.NewStyle().Foreground(lipgloss.Color(colorToHex(c))),
 		)
 	}
 	return
 }
 
-func ColorToHex(c colorful.Color) string {
+func colorToHex(c colorful.Color) string {
 	return fmt.Sprintf(
 		"#%s%s%s",
 		floatToHex(c.R),

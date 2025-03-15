@@ -7,13 +7,10 @@ import (
 )
 
 func InstallView(done bool) string {
-	label := "Installing HyprZen..."
-	if done {
-		label = "Installation complete! Press 'q' to exit."
-	}
+	label := "Installing HyprZen...\n\nPlease wait..."
 	return fmt.Sprintf(
 		"%s\n\n%s",
 		styles.KeywordStyle.Render(label),
-		styles.KeywordStyle.Render("Preparing system..."),
+		styles.KeywordStyle.Render("System setup in progress..."),
 	)
 }

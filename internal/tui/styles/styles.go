@@ -2,8 +2,6 @@ package styles
 
 import (
 	"github.com/charmbracelet/lipgloss"
-
-	"hyprzen/internal/utils"
 )
 
 const (
@@ -23,5 +21,5 @@ var (
 			Foreground(lipgloss.Color("236")).
 			Render(DotChar)
 	MainStyle = lipgloss.NewStyle().MarginLeft(2)
-	Ramp      = utils.MakeRampStyles("#B14FFF", "#00FFA3", ProgressBarWidth)
+	Ramp      = makeRampStyles("#B14FFF", "#00FFA3", ProgressBarWidth)
 )
