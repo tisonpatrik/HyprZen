@@ -1,9 +1,7 @@
 package core
 
-import "hyprzen/internal/utils"
+import "hyprzen/internal/core/aur_helpers"
 
-func PreInstall() {
-	nvidiaDetected := utils.IsNvidiaDetected()
-	ConfigureGrub(nvidiaDetected)
-	ConfigurePacman()
+func Install() {
+	aur_helpers.InstallParu()
 }

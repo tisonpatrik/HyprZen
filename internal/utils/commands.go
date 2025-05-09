@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"bufio"
 	"os"
 	"os/exec"
 	"strings"
@@ -31,29 +30,10 @@ func IsGrubDetected() bool {
 }
 
 func IsNvidiaDetected() bool {
-	cmd := exec.Command("lspci", "-k")
-	output, err := cmd.StdoutPipe()
+	cmd := exec.Command("sh", "-c", `lspci -nn | grep -Ei "vga|3d|display"`)
+	output, err := cmd.Output()
 	if err != nil {
 		return false
 	}
-	if err := cmd.Start(); err != nil {
-		return false
-	}
-
-	scanner := bufio.NewScanner(output)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.Contains(line, "VGA") || strings.Contains(line, "3D") {
-			if strings.Contains(strings.ToLower(line), "nvidia") {
-				return true
-			}
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return false
-	}
-
-	_ = cmd.Wait()
-	return false
+	return strings.Contains(strings.ToLower(string(output)), "nvidia")
 }
